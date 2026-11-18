@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Credit Review Report Generator</title>
+<style>
+:root{--bg:#f3f5f4;--card:#fff;--ink:#1c2a2e;--mute:#5b6b6f;--line:#d5dcdb;--acc:#0f5c5c;--accbg:#e3f0ee;--warn:#9a4a00;--warnbg:#fff1e0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root{--bg:#121819;--card:#1b2426;--ink:#e6eeee;--mute:#9db0b2;--line:#324042;--acc:#6cc3bb;--accbg:#1d3533;--warn:#ffb866;--warnbg:#3a2a14}}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 "Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif}
+header{padding:16px 16px 4px;max-width:1280px;margin:auto}
+h1{font-size:20px;margin:0}
+header p{margin:2px 0 0;color:var(--mute);font-size:13px}
+main{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;max-width:1280px;margin:auto;padding:12px 16px 40px}
+@media(min-width:960px){main{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}.out{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}}
+section{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:12px}
+h2{font-size:15px;margin:0 0 10px;color:var(--acc)}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.w{grid-column:1/-1}
+label{display:block;font-size:12px;color:var(--mute)}
+input,select,textarea{width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin-top:2px}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+button{font:inherit;font-size:14px;border:1px solid var(--acc);background:var(--acc);color:var(--card);border-radius:6px;padding:7px 12px;cursor:pointer}
+button.s{background:transparent;color:var(--acc)}
+.comp{border:1px solid var(--line);border-radius:6px;padding:10px;margin-bottom:10px;background:var(--bg)}
+.comp input{background:var(--card)}
+.ch{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px}
+.stats{display:flex;flex-wrap:wrap;gap:6px 16px;margin:10px 0 0;font-size:14px}
+.stats b{color:var(--acc)}
+.warn{background:var(--warnbg);color:var(--warn);border-radius:6px;padding:8px 10px;margin:8px 0;font-size:13px}
+.warn:empty{display:none}
+#rep{white-space:pre-wrap;line-height:1.85;font-size:14.5px}
+.bar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.hint{font-size:12px;color:var(--mute);margin:6px 0 0}
+.adv summary{cursor:pointer;color:var(--acc);margin:12px 0 8px}
+.ck{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--ink)}.ck input{width:auto;margin:0}
+.pchk{margin-top:6px;font-size:13px;border-radius:6px;padding:6px 10px}.pchk:empty{display:none}.pchk.okb{background:var(--accbg);color:var(--acc)}
+.sub{font-size:13px;color:var(--mute);margin:12px 0 6px;font-weight:600}
+</style>
+</head>
+<body>
+<header><h1>Credit Review Report Generator</h1><p>Enter data on the left and the report text updates live on the right. Press "Copy" (複製) and paste it into the system. Your data is saved automatically in this device's browser.</p></header>
+<main>
+<div>
+
+<section><h2>1. 案件與產品</h2>
+<div class="g">
+<div class="w"><label>產品<select id="prod" data-f></select></label></div>
+<div class="w"><label>擔保品地址（套用勘估地址）<input id="addr" data-f placeholder="例：高雄市○○區○○路○○號"></label></div>
+<div class="w"><button class="s" type="button" onclick="pullAddr()">從勘估報告帶入地址</button> <span class="hint" id="amsg"></span></div>
+<div><label>額度（仟元）<input id="amt" data-f type="number"></label></div>
+<div><label>期間（年）<input id="yrs" data-f type="number" value="30"></label></div>
+<div><label>寬限期<select id="gr" data-f><option>無</option><option>有</option></select></label></div>
+<div id="gyw"><label>寬限期（年）<input id="gy" data-f type="number" value="1"></label></div>
+<div id="rtw"><label>適用利率（%）<input id="rate" data-f></label></div>
+<div id="flw"><label>利率底線（%）<input id="flo" data-f value="2.4"></label></div>
+<div id="sbw"><label>乙項名稱<input id="sub" data-f value="育兒家庭"></label></div>
+</div>
+<div id="mBox">
+<div class="sub">理財型房貸減碼條件（依利率表註1）</div>
+<div class="g">
+<div class="w"><label>年收入條件<select id="dinc" data-f>
+<option value="">無</option>
+<option value="0.12|借款人年收達80萬以上">年收80萬以上（減0.12）</option>
+<option value="0.12|借款人與配偶年收合計達120萬以上">夫妻合計120萬以上（減0.12）</option>
+<option value="0.17|借款人年收達100萬以上">年收100萬以上（減0.17）</option>
+<option value="0.17|借款人與配偶年收合計達160萬以上">夫妻合計160萬以上（減0.17）</option></select></label></div>
+<div class="w"><label>擔保品座落級距<select id="dloc" data-f>
+<option value="">無</option>
+<option value="0.17">台北市、新北市A區（減0.17）</option>
+<option value="0.10" selected>桃園、新竹縣市、台中、台南、高雄市A區（減0.10）</option>
+<option value="0.05">A區、新北市B區（減0.05）</option></select></label></div>
+<div><label>座落（報告用文字）<input id="loct" data-f value="高雄市A區"></label></div>
+<div><label>收支比條件<select id="drat" data-f><option value="auto">依收支比自動</option><option value="0">無</option><option value="0.08">140%以上（減0.08）</option><option value="0.13">170%以上（減0.13）</option><option value="0.18">200%以上（減0.18）</option></select></label></div>
+</div>
+<details class="adv"><summary>理財型房貸利率表（進階）</summary>
+<p class="hint">適用利率＝指標利率 I＋加碼數。I 預設 1.751，是由 115.1.9 公告的適用利率反推（2.838−1.087），請依最新公告調整。</p>
+<div class="g"><div><label>指標利率 I（%）<input id="idx" data-f value="1.751"></label></div><div><label>第一類加碼<input id="mg0" data-f value="1.087"></label></div><div><label>第二類加碼<input id="mg1" data-f value="1.287"></label></div><div><label>第三類加碼<input id="mg2" data-f value="1.887"></label></div></div></details>
+</div>
+</section>
+
+<section><h2>2. 借款人 KYC</h2>
+<div class="g">
+<div><label>借款人姓名<input id="nm" data-f></label></div>
+<div><label>稱謂<select id="sx" data-f><option>先生</option><option>小姐</option></select></label></div>
+<div><label>民國出生年<input id="by" data-f type="number" placeholder="69"></label></div>
+<div><label>婚姻<select id="mar" data-f><option>已婚</option><option>未婚</option><option>離婚</option></select></label></div>
+<div><label>未成年子女數<input id="kids" data-f type="text" inputmode="numeric" value="0"></label></div>
+<div><label>個人生活費（仟元/月）<input id="lb" data-f type="text" inputmode="decimal" value="17"></label></div>
+<div><label>每位未成年子女加計（仟元/月）<input id="lk" data-f type="text" inputmode="decimal" value="5"></label></div>
+<div><label>現職公司<input id="emp" data-f></label></div>
+<div><label>職稱<input id="ttl" data-f></label></div>
+<div><label>年資（年）<input id="ten" data-f></label></div>
+</div>
+<div class="sub">生活收支（金額單位：仟元）</div>
+<div class="g">
+<div><label>所得資料年度（民國）<input id="ty" data-f type="number"></label></div>
+<div><label>全年薪資<input id="sal" data-f type="number"></label></div>
+<div><label>利息收入<input id="int" data-f type="number"></label></div>
+<div><label>股利收入<input id="dv" data-f type="number"></label></div>
+<div><label>其他收入<input id="oth" data-f type="number"></label></div>
+<div><label>應納稅額<input id="tax" data-f type="number"></label></div>
+<div><label>每月期金（留空＝自動計算）<input id="payo" data-f type="number" step="0.1"></label></div>
+</div>
+<details class="adv"><summary>期金計算說明</summary><p class="hint">期金自動計算：本息平均攤還，寬限期後以剩餘期間計算；理財循環性房貸若不適用請自行填入期金。</p></details>
+<div class="stats" id="calc"></div>
+</section>
+
+<section id="buySec"><h2>3. 購屋資訊（僅購屋貸款）</h2>
+<div class="g">
+<div class="w"><label>購屋價格（仟元，僅供檢核，不列入報告）<input id="price" data-f type="text" inputmode="decimal" placeholder="例：15000"></label><div id="pchk" class="pchk"></div></div>
+<div><label>名下住宅<select id="own" data-f><option>名下無自用住宅</option><option>名下已有自用住宅</option></select></label></div>
+<div><label>目前居住之住宅<input id="res" data-f placeholder="例：租賃住宅／父母住宅"></label></div>
+<div><label>購屋類型<select id="ptype" data-f><option>中古屋</option><option>預售屋</option></select></label></div>
+<div><label>探詢／選定地區<input id="area" data-f value="高雄地區"></label></div>
+<div><label>簽約時間<input id="sign" data-f type="month"></label></div>
+</div>
+<div class="sub">自籌款項（最後一期為銀行貸款，自動帶入）</div>
+<div id="rows"></div>
+<div class="bar"><button class="s" type="button" onclick="addR()">＋ 新增一期</button></div>
+<div class="g"><div class="w"><label>自籌款主要來源（查證結果用）<input id="msrc" data-f placeholder="例：借款人薪資積蓄"></label></div></div>
+</section>
+
+<section><h2>4. 其他財力、徵信調查</h2>
+<div class="g">
+<div class="w" id="ofw"><label>其他財力或資力情形<input id="ofin" data-f value="無。"></label></div>
+<div><label>聯徵截至（月底）<input id="jd" data-f type="month"></label></div>
+<div><label>借款餘額（元）<input id="bal" data-f></label></div>
+<div><label>票交所查告截至<input id="td" data-f type="date"></label></div>
+<div class="w"><label class="ck"><input type="checkbox" id="k22" data-f checked> 含 K22 年收入段落</label></div>
+<div><label>K22 最近期日期<input id="kd" data-f type="date"></label></div>
+<div><label>K22 年收入（仟元）<input id="ky" data-f type="number"></label></div>
+<div><label>申請書每月收入（仟元）<input id="am" data-f type="number"></label></div>
+<div><label>申請書年收入（仟元）<input id="aa" data-f type="number"></label></div>
+</div>
+</section>
+
+<section><h2>5. 其他</h2>
+<label>其他（命中時請自行修改）<textarea id="oth5" data-f rows="3">經查詢借款人及賣方依據防制洗錢及打擊資恐名單掃描結果，未命中。另查借款人身分證列管資料，無紀錄。</textarea></label>
+</section>
+</div>
+
+<div class="out"><section><h2>徵信綜合評述</h2><div class="warn" id="chk"></div>
+<div class="bar"><button onclick="copyR()" id="cp">複製</button><button class="s" id="cpa" onclick="copyA()">去個資化複製</button><button class="s" onclick="clr()">清空所有欄位</button></div><label class="ck" style="margin-bottom:6px"><input type="checkbox" id="pv"> 預覽去個資化版本</label><p class="hint" style="margin:0 0 8px">去個資化版本會遮蔽姓名、出生年、公司、現居住宅、地址（僅保留縣市區）、帳號與建商名稱。</p>
+<div id="rep"></div></section></div>
+</main>
+<script>
+var $=function(i){return document.getElementById(i)},KEY="credit-v1";
+var PR=[
+{n:"108年至116年築巢優利貸-公教員工購屋貸款",l:"築巢優利貸（購屋）",g:"購屋",buy:1,r:"2.185",t:"cn"},
+{n:"青年安心成家購屋優惠貸款3.0方案",l:"青年安心成家3.0（購屋）",g:"購屋",buy:1,r:"2.275",t:"qa"},
+{n:"青年安心成家購屋優惠貸款3.0方案",l:"青年安心成家3.0（甲乙兩項）",g:"購屋",buy:1,r:"2.275",t:"qa2"},
+{n:"房屋輕鬆貸治家成長非循環貸款（第一類）",l:"房屋輕鬆貸 第一類",g:"增貸",r:"2.345",t:"e",c:"一"},
+{n:"房屋輕鬆貸治家成長非循環貸款（第二類）",l:"房屋輕鬆貸 第二類",g:"增貸",r:"",t:"e",c:"二"},
+{n:"房屋輕鬆貸治家成長非循環貸款（第三類）",l:"房屋輕鬆貸 第三類",g:"增貸",r:"",t:"e",c:"三"},
+{n:"個人理財循環性房貸優惠專案(第一類)",l:"理財型房貸 第一類",g:"理財型房貸",m:1,k:0,c:"一"},
+{n:"個人理財循環性房貸優惠專案(第二類)",l:"理財型房貸 第二類",g:"理財型房貸",m:1,k:1,c:"二"},
+{n:"個人理財循環性房貸優惠專案(第三類)",l:"理財型房貸 第三類",g:"理財型房貸",m:1,k:2,c:"三"}];
+function newRow(lab,sub){return{lab:lab||"",amt:"",date:"",payer:"",acct:"",so:!!sub,dest:"XX銀行受託信託財產專戶",bld:"",dacct:"",si:!!sub,ib:true,src:""}}
+function eff(i){var r=R[i],o={},q;if(i>0&&r.so){q=eff(i-1);o.payer=q.payer;o.acct=q.acct}else{o.payer=r.payer||"";o.acct=r.acct||""}if(i>0&&r.si){q=eff(i-1);o.dest=q.dest;o.bld=q.bld;o.dacct=q.dacct;o.ib=q.ib}else{o.dest=r.dest||"";o.bld=r.bld||"";o.dacct=r.dacct||"";o.ib=r.ib!==false}return o}
+var ANON="",R=[],CN="〇一二三四五六七八九十";
+function cn(n){return n<=10?CN[n]:String(n)}
+function nn(v){return String(v).replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-65248)}).replace(/．/g,".").replace(/[，,]/g,"")}
+function n(id){var v=parseFloat(nn($(id).value));return isNaN(v)?NaN:v}
+function fmt(x){return isFinite(x)?Math.round(x).toLocaleString("en-US"):"XX"}
+function f1(x){return isFinite(x)?x.toLocaleString("en-US",{minimumFractionDigits:1,maximumFractionDigits:1}):"XX"}
+function nz(x){return isFinite(x)?Number(x.toFixed(1)).toLocaleString("en-US"):"XX"}
+function CM(id){var v=$(id).value.trim().replace(/,/g,"");if(!v)return "XX";return /^-?\d+(\.\d+)?$/.test(v)?v.replace(/^(-?\d+)/,function(x){return x.replace(/\B(?=(\d{3})+(?!\d))/g,",")}):v}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function T(id){var v=$(id).value.trim();return v||"XX"}
+function maskAddr(a){a=cleanAddr(a.trim());var m=a.match(/^(.{2,3}[市縣])(.{1,3}?[區鄉鎮市])/);return m?m[1]+m[2]+"○○○":"○○○"}
+function cleanAddr(a){return a.replace(/[0-9]+鄰/g,"").replace(/(?<=[區鄉鎮市])[一-龥]{1,4}里(?![路街大道巷弄])/,"")}
+function pmt(P,r,y,g){var m=y*12-g*12;if(!(P>0&&y>0&&m>0&&isFinite(r)))return NaN;var i=r/1200;return i==0?P/m:P*i/(1-Math.pow(1+i,-m))}
+function tierOf(x){return x>=200?0.18:x>=170?0.13:x>=140?0.08:0}
+
+function initProd(){var h="",g="";PR.forEach(function(p,i){if(p.g!=g){if(g)h+="</optgroup>";h+='<optgroup label="'+p.g+'">';g=p.g}h+='<option value="'+i+'">'+p.l+"</option>"});$("prod").innerHTML=h+"</optgroup>"}
+function drawR(){$("rows").innerHTML=R.map(function(r,i){
+ function inp(k,lab,cls,ty){return '<div class="'+(cls||"")+'"><label>'+lab+'<input '+(ty?'type="'+ty+'" ':"")+'data-r="'+i+'" data-k="'+k+'" value="'+esc(r[k]||"")+'"></label></div>'}
+ function ck(k,lab,def){var v=r[k]===undefined?def:r[k];return '<div class="w"><label class="ck"><input type="checkbox" data-r="'+i+'" data-k="'+k+'"'+(v?" checked":"")+'> '+lab+'</label></div>'}
+ var so=i>0&&r.so,si=i>0&&r.si;
+ return '<div class="comp"><div class="ch"><b>第'+cn(i+1)+'期</b><button class="s" type="button" onclick="delR('+i+')">刪除</button></div><div class="g">'+inp("lab","款項名稱")+inp("amt","金額（仟元）")+inp("date","支付日期","","date")
+ +(i>0?ck("so","匯出帳戶同上一期"):"")+(so?"":inp("payer","匯款戶名（空白＝借款人）")+inp("acct","匯款帳號"))
+ +(i>0?ck("si","匯入帳戶同上一期"):"")+(si?"":inp("dest","匯入帳戶","w")+ck("ib","匯入加註建商及帳號",true)+(r.ib===false?"":inp("bld","建商名稱")+inp("dacct","建商帳號")))
+ +inp("src","資金來源（借款人…）","w")+"</div></div>"}).join("")}
+function addR(){R.push(newRow("",R.length>0));drawR();gen()}
+function delR(i){R.splice(i,1);drawR();gen()}
+function p2(x){return(x<10?"0":"")+x}
+function dd(f){var d=new Date(),pm=new Date(d.getFullYear(),d.getMonth(),0),td=d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());if(f||!$("jd").value)$("jd").value=pm.getFullYear()+"-"+p2(pm.getMonth()+1);if(f||!$("td").value)$("td").value=td;if(f)$("kd").value=td}
+function defaults(){$("ty").value=new Date().getFullYear()-1912;dd(true);$("rate").value=PR[0].r}
+function rocD(v){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v||"");return m?(m[1]-1911)+"年"+(+m[2])+"月"+(+m[3])+"日":"XX"}
+function rocS(v){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v||"");return m?(m[1]-1911)+"/"+m[2]+"/"+m[3]:"XX"}
+function rocM(v,pad){var m=/^(\d{4})-(\d{2})$/.exec(v||"");return m?(m[1]-1911)+"年"+(pad?m[2]:+m[2])+"月":"XX"}
+function pullAddr(){var m=$("amsg");try{var o=JSON.parse(localStorage.getItem("appraisal-v2"));if(o&&o.V&&o.V.addr){$("addr").value=cleanAddr(o.V.addr);m.textContent="已帶入";gen();return}}catch(e){}m.textContent="找不到（需與勘估報告在同一瀏覽器與網址），請直接貼上地址"}
+
+function gen(){
+ var P=PR[+$("prod").value]||PR[0],buy=!!P.buy,m=!!P.m;
+ $("buySec").style.display=buy?"":"none";$("mBox").style.display=m?"":"none";$("rtw").style.display=m?"none":"";$("flw").style.display=(P.t=="e"&&P.c=="一")?"":"none";$("sbw").style.display=P.t=="qa2"?"":"none";$("gyw").style.display=$("gr").value=="有"?"":"none";$("ofw").style.display="";
+ var amt=n("amt"),yrs=n("yrs"),gy=$("gr").value=="有"?(n("gy")||0):0;
+ var sal=n("sal"),it=n("int")||0,dv=n("dv")||0,ot=n("oth")||0,tax=n("tax"),total=(isFinite(sal)?sal:0)+it+dv+ot,net=total-(isFinite(tax)?tax:0),mi=net/12;
+ var kids=Math.max(0,parseInt(nn($("kids").value))||0),lb=n("lb"),lk=n("lk"),live=(isFinite(lb)?lb:17)+(isFinite(lk)?lk:5)*kids;
+ var di=0,dit="",dl=0,iv=$("dinc").value;if(m){if(iv){var sp=iv.split("|");di=+sp[0];dit=sp[1]}dl=parseFloat($("dloc").value)||0}
+ function calc(dr){var rate=m?n("idx")+n("mg"+P.k)-di-dl-dr:n("rate");var pay=n("payo");if(!isFinite(pay))pay=pmt(amt,rate,yrs,gy);var ex=pay+live;return{rate:rate,pay:pay,ex:ex,ratio:mi/ex*100}}
+ var dr=0;if(m){if($("drat").value=="auto"){var ts=[0.18,0.13,0.08,0];for(var q=0;q<4;q++){if(tierOf(calc(ts[q]).ratio)>=ts[q]){dr=ts[q];break}}}else dr=parseFloat($("drat").value)||0}
+ var cc=calc(dr),base=m?n("idx")+n("mg"+P.k):NaN,dsum=di+dl+dr;
+ var rt=m?(isFinite(cc.rate)?cc.rate.toFixed(3):"XX"):T("rate");
+ $("calc").innerHTML=(isFinite(total)?"<span>全年所得 <b>"+fmt(total)+"</b></span><span>年淨所得 <b>"+fmt(net)+"</b></span>":"")+"<span>月收入 <b>"+f1(mi)+"</b></span><span>每月期金 <b>"+f1(cc.pay)+"</b></span><span>生活費 <b>"+nz(live)+"</b></span><span>月支出 <b>"+f1(cc.ex)+"</b></span><span>收支比 <b>"+f1(cc.ratio)+"%</b></span>"+(m?"<span>適用利率 <b>"+rt+"%</b></span><span>減碼合計 <b>"+dsum.toFixed(2)+"</b></span>":"");
+ function mk(an){var addr=an?maskAddr($("addr").value):T("addr"),A=fmt(amt),Y=isFinite(yrs)?yrs:"XX";
+ var gtxt=$("gr").value=="有"?"有寬限期"+(isFinite(gy)?gy:"XX")+"年":"無寬限期";
+ var L=["徵信綜合評述："];
+ L.push("1.本案借款人"+(buy?"為購置位於":"提供位於")+addr+(buy?"房地":"房地為擔保")+"，申請「"+P.n+(P.t=="qa2"?"」及「青年安心成家購屋優惠貸款（"+T("sub")+"）":"")+"」，額度"+A+"仟元，期間"+Y+"年，"+gtxt+"。");
+ L.push("");L.push("2.借款人KYC：");
+ var by=$("by").value.trim();
+ L.push("(1)基本資料：借款人"+(an?"○○○":T("nm"))+$("sx").value+"，民國"+(an?"○○":(by||"XX"))+"年生，"+$("mar").value+(kids>0?"育有未成年子女"+cn(kids)+"人":"")+"，現職"+(an?"○○○":T("emp"))+"擔任"+T("ttl")+"一職，年資約"+T("ten")+"年。");
+ var ex=[["利息收入",it],["股利收入",dv],["其他收入",ot]].filter(function(x){return x[1]>0}).map(function(x){return x[0]+fmt(x[1])+"仟元"});
+ var exs=ex.length?"，另有"+(ex.length>1?ex.slice(0,-1).join("、")+"及"+ex[ex.length-1]:ex[0])+"，合計"+fmt(total)+"仟元":"";
+ var lt=kids>0?"含計未成年生活費共"+nz(live)+"仟元":"約"+nz(live)+"仟元";
+ L.push("(2)生活收支狀況：依借款人提供"+T("ty")+"年度綜合所得稅各類所得資料清單，全年薪資約"+fmt(sal)+"仟元"+exs+"；扣除應納稅額"+(isFinite(tax)?fmt(tax):"XX")+"仟元（財政部稅務入口網試算）後，年淨所得約"+fmt(net)+"仟元，折算月平均收入約"+f1(mi)+"仟元，足應每月支出"+f1(cc.ex)+"仟元（本案每月應繳期金"+f1(cc.pay)+"仟元及每月生活費"+lt+"），收支比約"+f1(cc.ratio)+"%，尚具還款能力。");
+ var k=3;
+ if(buy){
+  L.push("(3)購屋貸款目的：借款人"+$("own").value+"，目前居住之住宅為"+(an?"○○○":T("res"))+"，考量自住使用，購入本案押品。");
+  var sg=rocM($("sign").value,1);
+  L.push("(4)購屋過程："+($("ptype").value=="中古屋"?"借款人探詢"+T("area")+"中古屋，透過仲介介紹符合需求，於"+sg+"簽訂本案契約。":"借款人考量自住需求，選定"+T("area")+"預售案，於"+sg+"簽訂買賣契約。"));
+  L.push("(5)自籌款項資金來源：");
+  R.forEach(function(r,i){var e=eff(i),py=an?"○○○":(e.payer||$("nm").value.trim()||"XX");L.push("第"+cn(i+1)+"期（"+(r.lab||"XX")+"）新臺幣"+(r.amt?fmt(parseFloat(String(r.amt).replace(/,/g,""))):"XX")+"仟元：於"+rocD(r.date)+"支付，由借款人"+py+"帳戶（帳號："+(an?"○○○○":(e.acct||"XX"))+"）匯至"+(e.dest||"XX")+(e.ib?"（建商："+(an?"○○○":(e.bld||"XX"))+"，帳號："+(an?"○○○○":(e.dacct||"XX"))+"）":"")+"；資金來源為借款人"+(r.src||"XX")+"。")});
+  L.push("第"+cn(R.length+1)+"期（銀行貸款）新臺幣"+A+"仟元，擬由本行貸款支應。");
+  L.push("查證結果：經查本案自籌款項主要來源為借款人"+T("msrc")+"，並檢視相關存摺明細資料，資金來源尚屬合理；未發現有以「借款人或他人」向「本行或其他金融機構」借貸資金支應之情形。");
+  k=6}
+ L.push("("+k+")其他財力或資力情形："+($("ofin").value.trim()||"無。"));
+ L.push("");L.push("3.徵信調查：");
+ L.push("(1)經詢據聯徵中心資料，截至"+rocM($("jd").value)+"底止借款人在金融機構借款餘額"+CM("bal")+"元，主債務無不良債信紀錄，共同債務/從債務無逾期催收紀錄；另詢據臺灣票據交換所查告，借款人截至"+rocD($("td").value)+"止最近三年無退票紀錄，最近六個月內無退票已辦理清償註記紀錄。");
+ if($("k22").checked)L.push("(2)K22發卡機構報送信用卡戶基本資訊，借款人最近期（"+rocS($("kd").value)+"）其他金融機構報送之年收入為"+CM("ky")+"仟元，與「消費者貸款申請書暨約定事項」內容每月收入"+CM("am")+"仟元(年收入"+CM("aa")+"仟元)，略有差異，係申辦時提供所得資料不同所致。");
+ L.push("");
+ var s4;
+ if(P.t=="cn")s4="本案申辦築巢優利貸購屋貸款，目前適用利率為年率"+rt+"%浮動計息。";
+ else if(P.t=="qa")s4="本案申辦「青年安心成家購屋優惠貸款3.0方案」，目前適用利率為年率"+rt+"%浮動計息。";
+ else if(P.t=="qa2")s4="本案甲項申辦「青年安心成家購屋優惠貸款3.0方案」，乙項申辦「青年安心成家購屋優惠貸款（"+T("sub")+"）」，目前兩項貸款適用利率均為年率"+rt+"%浮動計息。";
+ else if(P.t=="e"&&P.c=="一")s4="本案申辦「房屋輕鬆貸專案」第一類治家成長貸款（非循環性），目前適用年利率為"+rt+"%，採浮動計息；惟依其他未限定用途之非購屋貸款（不含信用貸款）消費者利率底線規範，適用利率底線為"+T("flo")+"%。";
+ else if(P.t=="e")s4="本案申辦「房屋輕鬆貸專案」第"+P.c+"類治家成長貸款-非循環性，目前適用利率為年率"+rt+"%浮動計息。";
+ else{var parts=[];if(di)parts.push(dit+"減"+di.toFixed(2));if(dl)parts.push((($("loct").value.trim())||"擔保品座落級距")+"減"+dl.toFixed(2));if(dr)parts.push("收支比"+Math.round(dr==0.18?200:dr==0.13?170:140)+"%以上減"+dr.toFixed(2));
+  s4="借款人向本行申請理財循環性房貸優惠專案(第"+P.c+"類)額度為新台幣"+A+"仟元，期限"+Y+"年。目前第"+P.c+"類適用利率為年率"+(isFinite(base)?base.toFixed(3):"XX")+"%浮動計息"+(parts.length?"，依條件最高可減碼"+dsum.toFixed(2)+"個百分點（"+parts.join("、")+"），故適用利率為"+rt+"%。":"。")}
+ L.push("4."+s4);L.push("");
+ L.push("5.其他：");L.push($("oth5").value.trim());
+ return L.join("\n")}
+ var txt=mk(false);ANON=mk(true);
+ $("rep").textContent=$("pv").checked?ANON:txt;
+ var pc=$("pchk"),pr=parseFloat(nn($("price").value)),pw="";
+ pc.className="pchk";pc.textContent="";
+ if(buy&&isFinite(pr)){var ss=0,ms=0;R.forEach(function(r){var v=parseFloat(nn(r.amt||""));if(isFinite(v))ss+=v;else ms++});
+  var tot=ss+(isFinite(amt)?amt:0),df=Math.round((pr-tot)*1000)/1000;
+  pc.className="pchk "+(df===0?"okb":"warn");
+  pc.textContent="自籌款合計 "+nz(ss)+" ＋ 銀行貸款 "+nz(amt)+" ＝ "+nz(tot)+" 仟元；"+(df===0?"與購屋價格相符 ✓":"與購屋價格 "+nz(pr)+" 仟元不符，"+(df>0?"尚差 ":"超出 ")+nz(Math.abs(df))+" 仟元")+(ms?"（有 "+ms+" 期金額未填）":"");
+  if(df!==0)pw="自籌款＋銀行貸款與購屋價格不符（"+(df>0?"尚差 ":"超出 ")+nz(Math.abs(df))+" 仟元）"}
+ var w=[],mc=(txt.match(/XX/g)||[]).length;if(pw)w.push(pw);if(mc)w.push("尚有 "+mc+" 處未填，報告中以「XX」顯示");
+ if(isFinite(cc.ratio)&&cc.ratio<100)w.push("收支比低於100%，請確認「尚具還款能力」語句");
+ if(gy>=yrs&&yrs>0)w.push("寬限期不得大於或等於期間");
+ if(m&&!isFinite(n("idx")))w.push("請輸入指標利率 I");
+ if(!m&&!$("rate").value.trim())w.push("請輸入適用利率");
+ $("chk").innerHTML=w.join("<br>");
+ save()}
+
+function save(){try{var o={f:{},R:R};[].forEach.call(document.querySelectorAll("[data-f]"),function(e){o.f[e.id]=e.type=="checkbox"?e.checked:e.value});localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}}
+function load(){try{var o=JSON.parse(localStorage.getItem(KEY));if(!o)return false;Object.keys(o.f).forEach(function(id){var e=$(id);if(!e)return;if(e.type=="checkbox")e.checked=!!o.f[id];else e.value=o.f[id]});R=o.R||[];return true}catch(e){return false}}
+function clr(){try{localStorage.removeItem(KEY)}catch(e){}[].forEach.call(document.querySelectorAll("[data-f]"),function(e){if(e.type=="checkbox")e.checked=true;else if(e.tagName=="SELECT")e.selectedIndex=e.id=="dloc"?2:0;else if(e.tagName!="TEXTAREA")e.value=e.defaultValue||""});$("oth5").value=$("oth5").defaultValue;$("ofin").value="無。";$("loct").value="高雄市A區";$("sub").value="育兒家庭";R=[newRow("簽約款"),newRow("完稅款",1)];defaults();drawR();gen()}
+function copyT(t,b,lab){function ok(){b.textContent="已複製";setTimeout(function(){b.textContent=lab},1500)}
+ function fb(){var a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy");ok()}catch(e){}a.remove()}
+ if(navigator.clipboard){navigator.clipboard.writeText(t).then(ok,fb)}else fb()}
+function copyR(){copyT($("rep").textContent==ANON&&$("pv").checked?lastTxt():$("rep").textContent,$("cp"),"複製")}
+function lastTxt(){var c=$("pv").checked;$("pv").checked=false;gen();var t=$("rep").textContent;$("pv").checked=c;gen();return t}
+function copyA(){copyT(ANON,$("cpa"),"去個資化複製")}
+
+document.addEventListener("input",function(e){var t=e.target;
+ if(t.dataset.r!=null){var ch=t.type=="checkbox";R[t.dataset.r][t.dataset.k]=ch?t.checked:t.value;if(ch)drawR();gen();return}
+ if(t.id=="prod"){var P=PR[+t.value];if(!P.m)$("rate").value=P.r}
+ gen()});
+initProd();
+if(load()){dd(false)}else{defaults();R=[newRow("簽約款"),newRow("完稅款",1)];pullAddr();$("amsg").textContent=""}
+drawR();gen();
+</script>
+</body>
+</html>
